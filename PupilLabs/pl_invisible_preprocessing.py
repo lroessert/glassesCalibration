@@ -65,12 +65,11 @@ def preprocessData(inputDir, output_root):
                                                          "norm_pos_x",
                                                          "norm_pos_y")])
         for g in list(chain(*gazeData_world[export_range])):
-            data = ['{:.3f}\t{:d}\t{:.1f}\t{:.3f}\t{:.3f}'.format(g["timestamp"] * 1000,
-                                                                  g["frame_idx"],
+            data = ['{:.3f}\t{:d}\t{:.1f}\t{:.3f}\t{:.3f}'.format(g["gaze_timestamp"] * 1000,
+                                                                  g["world_idx"],
                                                                   g["confidence"],
-                                                                  g["norm_pos"][0],
-                                                                  1 - g["norm_pos"][
-                                                                      1])]  # translate y coord to origin in top-left
+                                                                  g["norm_pos_x"],
+                                                                  1 - g["norm_pos_y"])]  # translate y coord to origin in top-left
             csv_writer.writerow(data)
 
     # write the frametimestamps to a csv file
@@ -89,7 +88,7 @@ def preprocessData(inputDir, output_root):
         os.system(cmd_str)
 
         # move the file to the output directory
-        shutil.move(join(inputDir, 'world.mp4'), join(outputDir, 'world.mp4'))
+        shutil.move(join(inputDir, 'worldCamera.mp4'), join(outputDir, 'worldCamera.mp4'))
 
 
 def formatGazeData(inputDir):
@@ -112,7 +111,12 @@ def formatGazeData(inputDir):
     gaze_by_frame = correlate_data(gaze_data_frame, frame_timestamps)
 
     # make frame_timestamps relative to the first data timestamp
-    start_timeStamp = gaze_by_frame[1][1]['timestamp']
+    i = 0
+    while i < len(gaze_by_frame):
+        if len(gaze_by_frame[i]) != 0:
+            start_timeStamp = gaze_by_frame[i][1]['gaze_timestamp']
+            break
+        i += 1
     frame_timestamps = (frame_timestamps - start_timeStamp) * 1000  # convert to ms
 
     return gaze_by_frame, frame_timestamps

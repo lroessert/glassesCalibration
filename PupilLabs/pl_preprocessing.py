@@ -115,6 +115,8 @@ def formatGazeData(inputDir):
 	# align gaze with world camera timestamps
 	gaze_by_frame = correlate_data(gaze_list, frame_timestamps)
 
+	print(gaze_by_frame[1][1])
+
 	# make frame_timestamps relative to the first data timestamp
 	start_timeStamp = gaze_by_frame[1][1]['timestamp']
 	frame_timestamps = (frame_timestamps - start_timeStamp) * 1000 # convert to ms
