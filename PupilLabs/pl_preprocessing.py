@@ -86,7 +86,7 @@ def preprocessData(inputDir, output_root):
 		os.system(cmd_str)
 
 		# move the file to the output directory
-		shutil.move(join(inputDir, 'world.mp4'), join(outputDir, 'world.mp4'))
+		shutil.move(join(inputDir, 'worldCamera.mp4'), join(outputDir, 'worldCamera.mp4'))
 
 
 def formatGazeData(inputDir):
