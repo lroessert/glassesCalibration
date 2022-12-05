@@ -1,5 +1,5 @@
 """
-Format raw Pupil Labs data.
+Format raw AdHawk data.
 Tested with Python 3.6, open CV 3.2
 The raw input data will be copied to a new directory stored in ./data.
 The output directory will be  named according to [mo-day-yr]/[hr-min-sec] of the original creation time format.
@@ -16,10 +16,12 @@ from __future__ import print_function
 import sys, os, shutil
 import argparse
 from datetime import datetime
+from datetime import date
 from os.path import join
 import numpy as np
 import pandas as pd
 import csv
+import json
 from itertools import chain
 
 import gc
@@ -30,18 +32,19 @@ def preprocessData(inputDir, output_root):
 	Run all preprocessing steps for pupil lab data
 	"""
 	### Prep output directory
-	info_file = join(inputDir, 'info.csv')  	# get the timestamp from the info.csv file
+	#TODO: Get date and time from gaze_data.csv file
+	info_file = join(inputDir, 'meta_data.json')  	# get the timestamp from the meta_data.json file
 	with open(info_file, 'r') as f:
-		for line in f:
-			if 'Start Date' in line:
-				startDate = datetime.strptime(line.split(',')[1].strip('\n'), '%d.%m.%Y')
-				date_dir = startDate.strftime('%Y_%m_%d')
-			if 'Start Time' in line:
-				print(line)
-				startTime = datetime.strptime(line.split(',')[1].strip('\n'), '%H:%M:%S')
-				time_dir = startTime.strftime('%H-%M-%S')
-			if 'World Camera Resolution' in line:
-				worldCamRes_y = int(line.split(',')[1].split('x')[1].strip('\n'))
+		meta_data = json.load(f)
+
+	# save current date and time
+	current_date = date.today()
+	date_dir = current_date.strftime('%Y_%m_%d')
+	current_time = datetime.now()
+	time_dir = current_time.strftime("%H-%M-%S")
+
+	worldCamRes_y = 1280
+	worldCamRes_x = 720
 
 	# create the output directory (if necessary)
 	outputDir = join(output_root, date_dir, time_dir)
@@ -96,24 +99,13 @@ def formatGazeData(inputDir):
 	- sync gaze data with the world_timestamps array
 	"""
 
-	# load pupil data
-	pupil_data_path = join(inputDir, 'pupil_data')
-	with open(pupil_data_path, 'rb') as fh:
-		try:
-			gc.disable()
-			pupil_data = msgpack.unpack(fh)
-		except Exception as e:
-			print(e)
-		finally:
-			gc.enable()
-	gaze_list = pupil_data['gaze_positions']   # gaze positon (world camera)
-
-	# load timestamps
-	timestamps_path = join(inputDir, 'world_timestamps.npy')
-	frame_timestamps = np.load(timestamps_path)
+	# load gaze data
+	info_file = join(inputDir, 'gaze_data.csv')
+	# import gaze_data.csv file as pandas dataframe
+	gaze_data_frame = remove_columns_from_data_frame(pd.read_csv(info_file), ['Gaze_X', 'Gaze_Y', 'Gaze_Z', 'Gaze_X_Right', 'Gaze_Y_Right', 'Gaze_Z_Right', 'Gaze_X_Left', 'Gaze_Y_Left', 'Gaze_Z_Left', 'Vergence', 'Screen_X', 'Screen_Y'])
 
 	# align gaze with world camera timestamps
-	gaze_by_frame = correlate_data(gaze_list, frame_timestamps)
+	gaze_by_frame = correlate_data(gaze_data_frame)
 
 	print(gaze_by_frame[1][1])
 
@@ -124,7 +116,17 @@ def formatGazeData(inputDir):
 	return gaze_by_frame, frame_timestamps
 
 
-def correlate_data(data,timestamps):
+def remove_columns_from_data_frame(data_frame, remove_columns_list):
+	try:
+		for i in remove_columns_list:
+			del data_frame[i]
+	except KeyError as e:
+		print('Error: No column with that name in dataframe:', e)
+
+	return data_frame
+
+
+def correlate_data(gaze_data_frame):
 	'''
 	data:  list of data :
 		each datum is a dict with at least:
@@ -135,27 +137,35 @@ def correlate_data(data,timestamps):
 	Each slot contains a list that will have 0, 1 or more assosiated data points.
 	Finally we add an index field to the datum with the associated index
 	'''
-	timestamps = list(timestamps)
-	data_by_frame = [[] for i in timestamps]
+	print(gaze_data_frame)
+	rows = gaze_data_frame.shape[0]
+	data_by_frame = [[] for i in range(rows)]
 
-	frame_idx = 0
+	gaze_data_frame.sort_values(by=['Timestamp'])
+
+	timestamps_data_frame = generate_timestamp_dataframe(gaze_data_frame)
+	print(gaze_data_frame)
+
+	frame_idx = timestamps_data_frame._get_value(0, 'Frame_Index')
 	data_index = 0
 
-	data.sort(key=lambda d: d['timestamp'])
 
 	while True:
 		try:
-			datum = data[data_index]
-			# we can take the midpoint between two frames in time: More appropriate for SW timestamps
-			ts = ( timestamps[frame_idx]+timestamps[frame_idx+1] ) / 2.
-			# or the time of the next frame: More appropriate for Sart Of Exposure Timestamps (HW timestamps).
-			# ts = timestamps[frame_idx+1]
+			datum = gaze_data_frame.iloc[data_index].to_dict()
+			#print('datum: ', datum)
+
+			#print('frame_idx: ', frame_idx + 1)
+			ts_row_number = timestamps_data_frame.loc[timestamps_data_frame['Frame_Index'] == (frame_idx + 1)].index[0]
+			ts = timestamps_data_frame._get_value(ts_row_number, 'Timestamp')
+			#print('ts: ', ts)
+
 		except IndexError:
 			# we might loose a data point at the end but we dont care
 			break
 
-		if datum['timestamp'] <= ts:
-			datum['frame_idx'] = frame_idx
+		if datum['Timestamp'] <= ts:
+			datum['Frame_Index'] = frame_idx
 			data_by_frame[frame_idx].append(datum)
 			data_index +=1
 		else:
@@ -163,7 +173,16 @@ def correlate_data(data,timestamps):
 
 	return data_by_frame
 
+def generate_timestamp_dataframe(data):
+	# remove columns not needed for timestamp dataframef
+	timestamps = remove_columns_from_data_frame(data, ['Image_X', 'Image_Y'])
+	# remove duplicate timestamps for frames
+	# only first timestamp of frame is saved
+	timestamps = timestamps.drop_duplicates(subset=['Frame_Index'], keep='first')
+	# reset indeces after deleting rows
+	timestamps.reset_index(drop=True, inplace=True)
 
+	return timestamps
 
 if __name__ == '__main__':
 	# parse arguments
