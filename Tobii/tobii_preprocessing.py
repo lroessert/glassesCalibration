@@ -153,7 +153,7 @@ def getVidFrameTimestamps(vid_file):
 	if OPENCV3:
 		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
 	else:
-		totalFrames = vid.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
+		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
 
 	frame_ts = np.zeros(int(totalFrames))
 
@@ -168,7 +168,7 @@ def getVidFrameTimestamps(vid_file):
 			if OPENCV3:
 				thisFrameTS = vid.get(cv2.CAP_PROP_POS_MSEC)
 			else:
-				thisFrameTS = vid.get(cv2.cv.CV_CAP_PROP_POS_MSEC)
+				thisFrameTS = vid.get(cv2.CAP_PROP_POS_MSEC)
 
 			# write this frame's ts to the array
 			frame_ts[frameCounter] = thisFrameTS
@@ -239,12 +239,12 @@ def json_to_df(json_file):
 
 		# set video timestamps column
 		df['vts_time'] = np.array(df.index)	   # df.index is data timstamps
-		df.ix[df.index < min(sorted(vts_sync.keys())), 'vts_time'] = np.nan		# set rows that occur before the first frame to nan
+		df.loc[df.index < min(sorted(vts_sync.keys())), 'vts_time'] = np.nan		# set rows that occur before the first frame to nan
 
 		# for each new vts sync package, reindex all of the rows above that timestamp
 		for key in sorted(vts_sync.keys()):
-			df.ix[df.index >= key, 'vts_time'] = np.array(df.index)[df.index >= key]   # necessary if there are more than 2 keys in the list (prior key changes need to be reset for higher vts syncs)
-			df.ix[df.index >= key, 'vts_time'] = df.vts_time - key + vts_sync[key]
+			df.loc[df.index >= key, 'vts_time'] = np.array(df.index)[df.index >= key]   # necessary if there are more than 2 keys in the list (prior key changes need to be reset for higher vts syncs)
+			df.loc[df.index >= key, 'vts_time'] = df.vts_time - key + vts_sync[key]
 
 		# note: the vts column indicates, in microseconds, where this datapoint would occur in the video timeline
 		# these do NOT correspond to the timestamps of when the videoframes were acquired. Need cv2 methods for that.
