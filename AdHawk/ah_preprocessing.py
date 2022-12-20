@@ -61,17 +61,15 @@ def preprocessData(inputDir, output_root):
 	export_range = slice(0, len(gazeData_world))
 	with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
 		csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
-		csv_writer.writerow(['{}\t{}\t{}\t{}\t{}'.format("timestamp",
+		csv_writer.writerow(['{}\t{}\t{}\t{}'.format("timestamp",
 							"frame_idx",
-							"confidence",
 							"norm_pos_x",
 							"norm_pos_y")])
 		for g in list(chain(*gazeData_world[export_range])):
-			data = ['{:.3f}\t{:d}\t{:.1f}\t{:.3f}\t{:.3f}'.format(g["timestamp"]*1000,
-								g["frame_idx"],
-								g["confidence"],
-								g["norm_pos"][0],
-								1-g["norm_pos"][1])]  # translate y coord to origin in top-left
+			data = ['{:.3f}\t{:d}\t{:.3f}\t{:.3f}'.format(g["Timestamp"]*1000,
+								g["Frame_Index"],
+								g["Image_X"],
+								1-g["Image_Y"])]  # translate y coord to origin in top-left
 			csv_writer.writerow(data)
 
 	# write the frametimestamps to a csv file
@@ -84,7 +82,7 @@ def preprocessData(inputDir, output_root):
 	if not 'worldCamera.mp4' in os.listdir(outputDir):
 		# compress
 		print('compressing world camera video')
-		cmd_str = ' '.join(['ffmpeg', '-i', join(inputDir, 'world.mp4'), '-pix_fmt', 'yuv420p', join(inputDir, 'worldCamera.mp4')])
+		cmd_str = ' '.join(['ffmpeg', '-i', join(inputDir, 'session.mp4'), '-pix_fmt', 'yuv420p', join(inputDir, 'worldCamera.mp4')])
 		print(cmd_str)
 		os.system(cmd_str)
 
@@ -104,14 +102,20 @@ def formatGazeData(inputDir):
 	# import gaze_data.csv file as pandas dataframe
 	gaze_data_frame = remove_columns_from_data_frame(pd.read_csv(info_file), ['Gaze_X', 'Gaze_Y', 'Gaze_Z', 'Gaze_X_Right', 'Gaze_Y_Right', 'Gaze_Z_Right', 'Gaze_X_Left', 'Gaze_Y_Left', 'Gaze_Z_Left', 'Vergence', 'Screen_X', 'Screen_Y'])
 
+	# load timestamps: generate list with only timestamps for frames from gaze data
+	frame_timestamps = generate_timestamp_list(gaze_data_frame.copy(), 0)
+
 	# align gaze with world camera timestamps
-	gaze_by_frame = correlate_data(gaze_data_frame)
-
-	print(gaze_by_frame[1][1])
-
+	gaze_by_frame = correlate_data(gaze_data_frame, frame_timestamps)
+	print(gaze_by_frame)
 	# make frame_timestamps relative to the first data timestamp
-	start_timeStamp = gaze_by_frame[1][1]['timestamp']
-	frame_timestamps = (frame_timestamps - start_timeStamp) * 1000 # convert to ms
+	i = 0
+	while i < len(gaze_by_frame):
+		if len(gaze_by_frame[i]) != 0:
+			start_timeStamp = gaze_by_frame[i][0]['Timestamp']
+			break
+		i += 1
+	frame_timestamps = (frame_timestamps - start_timeStamp) * 1000
 
 	return gaze_by_frame, frame_timestamps
 
@@ -126,7 +130,7 @@ def remove_columns_from_data_frame(data_frame, remove_columns_list):
 	return data_frame
 
 
-def correlate_data(gaze_data_frame):
+def correlate_data(gaze_data_frame, timestamps):
 	'''
 	data:  list of data :
 		each datum is a dict with at least:
@@ -137,52 +141,95 @@ def correlate_data(gaze_data_frame):
 	Each slot contains a list that will have 0, 1 or more assosiated data points.
 	Finally we add an index field to the datum with the associated index
 	'''
-	print(gaze_data_frame)
-	rows = gaze_data_frame.shape[0]
-	data_by_frame = [[] for i in range(rows)]
 
+	data_by_frame = [[] for i in timestamps]
 	gaze_data_frame.sort_values(by=['Timestamp'])
 
-	timestamps_data_frame = generate_timestamp_dataframe(gaze_data_frame)
-	print(gaze_data_frame)
-
-	frame_idx = timestamps_data_frame._get_value(0, 'Frame_Index')
+	frame_idx = 0
 	data_index = 0
-
 
 	while True:
 		try:
+			# get each row of data and convert from DataFrame to Dict
 			datum = gaze_data_frame.iloc[data_index].to_dict()
-			#print('datum: ', datum)
 
-			#print('frame_idx: ', frame_idx + 1)
-			ts_row_number = timestamps_data_frame.loc[timestamps_data_frame['Frame_Index'] == (frame_idx + 1)].index[0]
-			ts = timestamps_data_frame._get_value(ts_row_number, 'Timestamp')
-			#print('ts: ', ts)
+			# we can take the midpoint between two frames in time: More appropriate for SW timestamps
+			ts = (timestamps[frame_idx] + timestamps[frame_idx + 1]) / 2.
 
 		except IndexError:
-			# we might loose a data point at the end but we dont care
+			# we might lose a data point at the end but we dont care
 			break
 
 		if datum['Timestamp'] <= ts:
 			datum['Frame_Index'] = frame_idx
 			data_by_frame[frame_idx].append(datum)
+
 			data_index +=1
 		else:
 			frame_idx+=1
-
 	return data_by_frame
 
-def generate_timestamp_dataframe(data):
-	# remove columns not needed for timestamp dataframef
-	timestamps = remove_columns_from_data_frame(data, ['Image_X', 'Image_Y'])
-	# remove duplicate timestamps for frames
-	# only first timestamp of frame is saved
-	timestamps = timestamps.drop_duplicates(subset=['Frame_Index'], keep='first')
-	# reset indeces after deleting rows
-	timestamps.reset_index(drop=True, inplace=True)
+def generate_timestamp_list(data, empty_value):
+	"""
+	Generates timestamp list from AdHawk gaze data. Fills frames with no timestamps with calculated average frame time.
+	Returns frames as Numpy array.
+	"""
 
+	# get number of frames from DataFrame and create empty list with number of frames as length
+	number_of_frames = data['Frame_Index'].max(axis=0)
+	frame_timestamps = [[] for i in range(number_of_frames)]
+
+	# fill list with timestamps from each frame
+	for i in range(number_of_frames + 1):
+		try:
+			frame_timestamps[i-1] = data.loc[data.Frame_Index == i, 'Timestamp'].values[0]
+		except IndexError:
+			# no timestamp exists for that frame
+			frame_timestamps[i-1] = empty_value
+
+	#convert list to numpy array and fill empty_values
+	frame_timestamps = fill_incomplete_timestamps(np.array(frame_timestamps), empty_value)
+
+	return frame_timestamps
+
+def fill_incomplete_timestamps(timestamps, empty_value):
+	"""
+	Fills empty frames with calculated average frame time.
+	"""
+
+	if list_contains_value(timestamps, empty_value):
+		#create copy of list without zeroes
+		timestamps_copy = np.delete(timestamps, np.where(timestamps == 0))
+
+		#calculate average frame time
+		average_frametime = np.average(np.diff(timestamps_copy))
+
+		fill_list_values(timestamps, average_frametime, empty_value)
+
+	# return list as numpy array
 	return timestamps
+
+def fill_list_values(list, difference, empty_value):
+	"""
+	Fills list in reverse from start-value. Subtracts difference from previous value.
+	"""
+
+	for i in range(len(list), 0, -1):
+		if list[i-1] == empty_value:
+			list[i-1] = list[i] - difference
+
+	return list
+
+def list_contains_value(list, value):
+	"""
+	Checks of list contains value and returns boolean values
+	"""
+
+	if value in list:
+		return True
+	else:
+		return False
+
 
 if __name__ == '__main__':
 	# parse arguments
