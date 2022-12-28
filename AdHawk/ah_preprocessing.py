@@ -32,16 +32,25 @@ def preprocessData(inputDir, output_root):
 	Run all preprocessing steps for pupil lab data
 	"""
 	### Prep output directory
-	#TODO: Get date and time from gaze_data.csv file
-	info_file = join(inputDir, 'meta_data.json')  	# get the timestamp from the meta_data.json file
-	with open(info_file, 'r') as f:
-		meta_data = json.load(f)
+	# get the timestamp from the gaze_data.csv file
+	info_file = join(inputDir, 'gaze_data.csv') 	# get the timestamp from the gaze_data.csv file
+	time_dataframe = remove_columns_from_data_frame(pd.read_csv(info_file), ['Timestamp', 'Gaze_X', 'Gaze_Y', 'Gaze_Z',
+																			 'Gaze_X_Right', 'Gaze_Y_Right',
+																			 'Gaze_Z_Right', 'Gaze_X_Left',
+																			 'Gaze_Y_Left', 'Gaze_Z_Left', 'Vergence',
+																			 'Image_X', 'Image_Y', 'Screen_X',
+																			 'Screen_Y', 'Frame_Index'])
+	time_data = time_dataframe.values[0][0]
+
+	# Split timestamps into date and time and format correctly
+	date_string = time_data.split('T', 1)[0].replace('-', '_')
+	time_string = time_data.split('T', 1)[1].replace(':', '-').split('.', 1)[0]
 
 	# save current date and time
-	current_date = date.today()
-	date_dir = current_date.strftime('%Y_%m_%d')
-	current_time = datetime.now()
-	time_dir = current_time.strftime("%H-%M-%S")
+	startDate = datetime.strptime(date_string, '%Y_%m_%d')
+	date_dir = startDate.strftime('%Y_%m_%d')
+	startTime = datetime.strptime(time_string, '%H-%M-%S')
+	time_dir = startTime.strftime('%H-%M-%S')
 
 	worldCamRes_y = 1280
 	worldCamRes_x = 720
@@ -107,7 +116,7 @@ def formatGazeData(inputDir):
 
 	# align gaze with world camera timestamps
 	gaze_by_frame = correlate_data(gaze_data_frame, frame_timestamps)
-	print(gaze_by_frame)
+
 	# make frame_timestamps relative to the first data timestamp
 	i = 0
 	while i < len(gaze_by_frame):

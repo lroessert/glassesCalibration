@@ -44,6 +44,8 @@ def preprocessData(inputDir, output_root):
             if 'World Camera Resolution' in line:
                 worldCamRes_y = int(line.split(',')[1].split('x')[1].strip('\n'))
 
+    print(startTime)
+    print(time_dir)
     # create the output directory (if necessary)
     outputDir = join(output_root, date_dir, time_dir)
     if not os.path.isdir(outputDir):
