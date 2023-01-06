@@ -156,10 +156,10 @@ def processRecording(preprocessedDir, outputDir, referenceImage_path):
 		vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
 		featureDetect = cv2.xfeatures2d.SIFT_create()
 	else:
-		totalFrames = vid.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
-		vidSize = (int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)))
-		fps = vid.get(cv2.cv.CV_CAP_PROP_FPS)
-		vidCodec = cv2.cv.CV_FOURCC(*'mp4v')
+		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
+		vidSize = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+		fps = vid.get(cv2.CAP_PROP_FPS)
+		vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
 		featureDetect = cv2.SIFT()
 
 	# world camera output video
@@ -369,5 +369,5 @@ if __name__ == '__main__':
 	else:
 		## process the recording
 		print('processing the recording...')
-		print('Output saved in: {}').format(args.outputDir)
+		print('Output saved in: ', args.outputDir)
 		processRecording(args.preprocessedDir, args.outputDir, args.referenceImage)
