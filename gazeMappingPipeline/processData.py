@@ -178,7 +178,6 @@ def processRecording(preprocessedDir, outputDir, referenceImage_path):
 	vidOut_ref2world.open(vidOut_ref2world_fname, vidCodec, fps, vidSize, True)
 
 	### find keypoints, descriptors for the reference image
-	# TODO: Next line causes segmentation fault.
 	refImg_kp, refImg_des = featureDetect.detectAndCompute(refImg, None)
 	print('Reference Image: found {} keypoints'.format(len(refImg_kp)))
 
