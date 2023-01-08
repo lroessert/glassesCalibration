@@ -28,7 +28,7 @@ import pandas as pd
 from os.path import join
 import cv2
 
-OPENCV3 = (cv2.__version__.split('.')[0] == '3')
+OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 print("OPENCV version " + cv2.__version__)
 
 def copyPreprocessing(preprocessedDir, condition):
@@ -149,18 +149,18 @@ def processRecording(preprocessedDir, outputDir, referenceImage_path):
 	### Prep the video data #######################################
 	# load the video, get parameters
 	vid = cv2.VideoCapture(join(preprocessedDir, 'worldCamera.mp4'))
-	if OPENCV3:
+	if OPENCV4:
 		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
 		vidSize = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 		fps = vid.get(cv2.CAP_PROP_FPS)
 		vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
-		featureDetect = cv2.xfeatures2d.SIFT_create()
+		featureDetect = cv2.SIFT_create()
 	else:
 		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
 		vidSize = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 		fps = vid.get(cv2.CAP_PROP_FPS)
 		vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
-		featureDetect = cv2.SIFT()
+		featureDetect = cv2.SIFT_create()
 
 	# world camera output video
 	vidOut_world_fname = join(outputDir, 'world_gaze.m4v')
