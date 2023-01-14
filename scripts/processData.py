@@ -37,8 +37,8 @@ from os.path import join
 import cv2
 
 ### configuration vars
-border_path = './referenceGrids/enhancedGrid.jpg'
-calibGrid_path = './referenceGrids/calibrationGrid.jpg'
+border_path = '../referenceGrids/enhancedGrid.jpg'
+calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
 
 OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 print("OPENCV version " + cv2.__version__)
