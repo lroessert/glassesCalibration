@@ -37,10 +37,10 @@ from os.path import join
 import cv2
 
 ### configuration vars
-border_path = '../referenceGrids/enhancedGrid.jpg'
-calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
+border_path = './referenceGrids/enhancedGrid.jpg'
+calibGrid_path = './referenceGrids/calibrationGrid.jpg'
 
-OPENCV3 = (cv2.__version__.split('.')[0] == '3')
+OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 print("OPENCV version " + cv2.__version__)
 
 
@@ -132,7 +132,7 @@ def projectImage2D(origFrame, transform2D, newImage):
 	return newFrame
 
 
-def processRecording(condition):
+def processRecording(preprocessedDir, condition):
 	"""
 	process the preprocessed data saved in the directory specifed by 'condition'
 
@@ -166,19 +166,19 @@ def processRecording(condition):
 
 	### Prep the video data #######################################
 	# load the video, get parameters
-	vid = cv2.VideoCapture(join(dataDir, 'worldCamera.mp4'))
-	if OPENCV3:
+	vid = cv2.VideoCapture(join(preprocessedDir, 'worldCamera.mp4'))
+	if OPENCV4:
 		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
 		vidSize = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 		fps = vid.get(cv2.CAP_PROP_FPS)
 		vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
-		featureDetect = cv2.xfeatures2d.SIFT_create()
+		featureDetect = cv2.SIFT_create()
 	else:
-		totalFrames = vid.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
-		vidSize = (int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)))
-		fps = vid.get(cv2.cv.CV_CAP_PROP_FPS)
-		vidCodec = cv2.cv.CV_FOURCC(*'mp4v')
-		featureDetect = cv2.SIFT()
+		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
+		vidSize = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+		fps = vid.get(cv2.CAP_PROP_FPS)
+		vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
+		featureDetect = cv2.SIFT_create()
 
 	vidOut_world_fname = join(procDir, 'world_gaze.m4v')
 	vidOut_world = cv2.VideoWriter()
@@ -414,4 +414,4 @@ if __name__ == '__main__':
 
 		## process the recording
 		print('processing the recording...')
-		processRecording(args.condition)
+		processRecording(args.preprocessedDir, args.condition)
