@@ -1,14 +1,15 @@
 """
-Format raw Pupil Labs data.
-Tested with Python 3.6, open CV 3.2
+Format Pupil Labs data exported from Pupil Player 3.5.7.
+Tested with Python 3.11, open CV 4.7.0
+
 The raw input data will be copied to a new directory stored in ./data.
 The output directory will be  named according to [mo-day-yr]/[hr-min-sec] of the original creation time format.
+
 The output directory will contain:
 	- worldCamera.mp4: the video from the point-of-view scene camera on the glasses
 	- frame_timestamps.tsv: table of timestamps for each frame in the world
 	- gazeData_world.tsv: gaze data, where all gaze coordinates are represented w/r/t the world camera
 """
-
 # python 2/3 compatibility
 from __future__ import division
 from __future__ import print_function
@@ -25,39 +26,48 @@ from itertools import chain
 import gc
 import msgpack
 
-
 def preprocessData(inputDir, output_root):
     """
 	Run all preprocessing steps for pupil lab data
 	"""
-    ### Prep output directory
-    info_file = join(inputDir, 'export_info.csv')  # get the timestamp from the info.csv file
-    with open(info_file, 'r') as f:
-        for line in f:
-            if 'Export Date' in line:
-                startDate = datetime.strptime(line.split(',')[1].strip('\n'), '%d.%m.%Y')
-                date_dir = startDate.strftime('%Y_%m_%d')
-            if 'Export Time' in line:
-                print(line)
-                startTime = datetime.strptime(line.split(',')[1].strip('\n'), '%H:%M:%S')
-                time_dir = startTime.strftime('%H-%M-%S')
-            if 'World Camera Resolution' in line:
-                worldCamRes_y = int(line.split(',')[1].split('x')[1].strip('\n'))
 
-    print(startTime)
-    print(time_dir)
+    # Get the time, date and resolution from the info.csv file
+    info_file = join(inputDir, 'export_info.csv')
+    date_dir, time_dir = save_info_from_csv(info_file)
+
     # create the output directory (if necessary)
-    outputDir = join(output_root, date_dir, time_dir)
-    if not os.path.isdir(outputDir):
-        os.makedirs(outputDir)
+    outputDir = create_output_directory(output_root, date_dir, time_dir)
 
-    ### Format the gaze data
+    # Format the gaze data
     print('formatting gaze data...')
     gazeData_world, frame_timestamps = formatGazeData(inputDir)
 
     # write the gazeData to to a csv file
     print('writing file to csv...')
     csv_file = join(outputDir, 'gazeData_world.tsv')
+    export_csv(csv_file, gazeData_world, frame_timestamps, outputDir)
+
+    ### Compress and Move the world camera movie to the output
+    print('copying world recording movie...')
+    export_video(inputDir, outputDir)
+
+def export_video(inputDir, outputDir):
+    if not 'worldCamera.mp4' in os.listdir(outputDir):
+        # compress
+        print('compressing world camera video')
+        cmd_str = ' '.join(
+            ['ffmpeg', '-i', join(inputDir, 'world.mp4'), '-pix_fmt', 'yuv420p', join(inputDir, 'worldCamera.mp4')])
+        print(cmd_str)
+        os.system(cmd_str)
+
+        # move the file to the output directory
+        shutil.move(join(inputDir, 'worldCamera.mp4'), join(outputDir, 'worldCamera.mp4'))
+
+def export_csv(csv_file, gazeData_world, frame_timestamps, outputDir):
+    """
+    Read date_dir, time_dir, worldCamRes_y which are stored in .csv file and return them.
+    """
+
     export_range = slice(0, len(gazeData_world))
     with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
@@ -79,19 +89,27 @@ def preprocessData(inputDir, output_root):
     frame_ts_df = pd.DataFrame({'frameNum': frameNum, 'timestamp': frame_timestamps})
     frame_ts_df.to_csv(join(outputDir, 'frame_timestamps.tsv'), sep='\t', float_format='%.3f', index=False)
 
-    ### Compress and Move the world camera movie to the output
-    print('copying world recording movie...')
-    if not 'worldCamera.mp4' in os.listdir(outputDir):
-        # compress
-        print('compressing world camera video')
-        cmd_str = ' '.join(
-            ['ffmpeg', '-i', join(inputDir, 'world.mp4'), '-pix_fmt', 'yuv420p', join(inputDir, 'worldCamera.mp4')])
-        print(cmd_str)
-        os.system(cmd_str)
+def save_info_from_csv(info_file):
+    """
+    Read date_dir, time_dir, worldCamRes_y which are stored in .csv file and return them.
+    """
+    with open(info_file, 'r') as f:
+        for line in f:
+            if 'Export Date' in line:
+                startDate = datetime.strptime(line.split(',')[1].strip('\n'), '%d.%m.%Y')
+                date_dir = startDate.strftime('%Y_%m_%d')
+            if 'Export Time' in line:
+                startTime = datetime.strptime(line.split(',')[1].strip('\n'), '%H:%M:%S')
+                time_dir = startTime.strftime('%H-%M-%S')
 
-        # move the file to the output directory
-        shutil.move(join(inputDir, 'worldCamera.mp4'), join(outputDir, 'worldCamera.mp4'))
+    return date_dir, time_dir
 
+def create_output_directory(output_root, date_dir, time_dir):
+    outputDir = join(output_root, date_dir, time_dir)
+    if not os.path.isdir(outputDir):
+        os.makedirs(outputDir)
+
+    return outputDir
 
 def formatGazeData(inputDir):
     """
@@ -102,8 +120,7 @@ def formatGazeData(inputDir):
 
     # load pupil data
     info_file = join(inputDir, 'gaze_positions.csv')
-    # import .csv file as pandas dataframe
-    gaze_data_frame = remove_obsolete_columns(pd.read_csv(info_file))
+    gaze_data_frame = load_pupil_data_from_csv(info_file)
 
     # load timestamps
     timestamps_path = join(inputDir, 'world_timestamps.npy')
@@ -112,7 +129,15 @@ def formatGazeData(inputDir):
     # align gaze with world camera timestamps
     gaze_by_frame = correlate_data(gaze_data_frame, frame_timestamps)
 
-    # make frame_timestamps relative to the first data timestamp
+    # Set start timestamp
+    frame_timestamps = set_start_timeStamp(gaze_by_frame, frame_timestamps)
+
+    return gaze_by_frame, frame_timestamps
+
+def set_start_timeStamp(gaze_by_frame, frame_timestamps):
+    """
+    Make frame_timestamps relative to the first data timestamp
+    """
     i = 0
     while i < len(gaze_by_frame):
         if len(gaze_by_frame[i]) != 0:
@@ -121,29 +146,31 @@ def formatGazeData(inputDir):
         i += 1
     frame_timestamps = (frame_timestamps - start_timeStamp) * 1000  # convert to ms
 
-    return gaze_by_frame, frame_timestamps
+    return frame_timestamps
 
+def load_pupil_data_from_csv(info_file):
+    """
+    Load the pupil_data from .csv file and return as dataFrame
+    """
+    # import .csv file as pandas dataframe
+    gaze_data_frame = remove_columns_from_data_frame(pd.read_csv(info_file), ['base_data', 'gaze_point_3d_x',
+                                                                              'gaze_point_3d_y', 'gaze_point_3d_z',
+                                                                              'eye_center0_3d_x', 'eye_center0_3d_y',
+                                                                              'eye_center0_3d_z', 'gaze_normal0_x',
+                                                                              'gaze_normal0_y', 'gaze_normal0_z',
+                                                                              'eye_center1_3d_x', 'eye_center1_3d_y',
+                                                                              'eye_center1_3d_z', 'gaze_normal1_x',
+                                                                              'gaze_normal1_y', 'gaze_normal1_z'])
+    return gaze_data_frame
 
-def remove_obsolete_columns(data_frame):
-    del data_frame['base_data']
-    del data_frame['gaze_point_3d_x']
-    del data_frame['gaze_point_3d_y']
-    del data_frame['gaze_point_3d_z']
-    del data_frame['eye_center0_3d_x']
-    del data_frame['eye_center0_3d_y']
-    del data_frame['eye_center0_3d_z']
-    del data_frame['gaze_normal0_x']
-    del data_frame['gaze_normal0_y']
-    del data_frame['gaze_normal0_z']
-    del data_frame['eye_center1_3d_x']
-    del data_frame['eye_center1_3d_y']
-    del data_frame['eye_center1_3d_z']
-    del data_frame['gaze_normal1_x']
-    del data_frame['gaze_normal1_y']
-    del data_frame['gaze_normal1_z']
+def remove_columns_from_data_frame(data_frame, remove_columns_list):
+	try:
+		for i in remove_columns_list:
+			del data_frame[i]
+	except KeyError as e:
+		print('Error: No column with that name in dataframe:', e)
 
-    return data_frame
-
+	return data_frame
 
 def correlate_data(data, timestamps):
     '''
@@ -200,6 +227,5 @@ if __name__ == '__main__':
         print('Invalid input dir: {}'.format(args.inputDir))
         sys.exit()
     else:
-
         # run preprocessing on this data
         preprocessData(args.inputDir, args.outputDir)
