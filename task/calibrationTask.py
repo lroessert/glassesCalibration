@@ -44,7 +44,7 @@ def presentTask(subj, glasses, distance, offset):
 	screen = pygame.display.set_mode(size)
 
 	# Load the start image
-	startImg = pygame.image.load("startImage.jpg")
+	startImg = pygame.image.load("/Users/leonardrossert/Documents/GitHub/glassesCalibration/task/startImage.jpg")
 
 	# Show start screen (red screen for 3 sec, then Luuka)
 	keepGoing = True
@@ -61,7 +61,7 @@ def presentTask(subj, glasses, distance, offset):
 
 		pygame.display.flip()
 
-	s = raw_input('Press Enter to start calibration')
+	s = input('Press Enter to start calibration')
 
 	# Loop through each coordinate pairing
 	for p in pairings:
