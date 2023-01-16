@@ -25,107 +25,128 @@ from itertools import chain
 import gc
 import msgpack
 
+
 def preprocessData(inputDir, output_root):
-	"""
+    """
 	Run all preprocessing steps for pupil lab data
 	"""
-	### Prep output directory
-	info_file = join(inputDir, 'info.csv')  	# get the timestamp from the info.csv file
-	with open(info_file, 'r') as f:
-		for line in f:
-			if 'Start Date' in line:
-				startDate = datetime.strptime(line.split(',')[1].strip('\n'), '%d.%m.%Y')
-				date_dir = startDate.strftime('%Y_%m_%d')
-			if 'Start Time' in line:
-				print(line)
-				startTime = datetime.strptime(line.split(',')[1].strip('\n'), '%H:%M:%S')
-				time_dir = startTime.strftime('%H-%M-%S')
-			if 'World Camera Resolution' in line:
-				worldCamRes_y = int(line.split(',')[1].split('x')[1].strip('\n'))
+    ### Prep output directory
+    info_file = join(inputDir, 'export_info.csv')  # get the timestamp from the info.csv file
+    with open(info_file, 'r') as f:
+        for line in f:
+            if 'Export Date' in line:
+                startDate = datetime.strptime(line.split(',')[1].strip('\n'), '%d.%m.%Y')
+                date_dir = startDate.strftime('%Y_%m_%d')
+            if 'Export Time' in line:
+                print(line)
+                startTime = datetime.strptime(line.split(',')[1].strip('\n'), '%H:%M:%S')
+                time_dir = startTime.strftime('%H-%M-%S')
+            if 'World Camera Resolution' in line:
+                worldCamRes_y = int(line.split(',')[1].split('x')[1].strip('\n'))
 
-	# create the output directory (if necessary)
-	outputDir = join(output_root, date_dir, time_dir)
-	if not os.path.isdir(outputDir):
-		os.makedirs(outputDir)
+    print(startTime)
+    print(time_dir)
+    # create the output directory (if necessary)
+    outputDir = join(output_root, date_dir, time_dir)
+    if not os.path.isdir(outputDir):
+        os.makedirs(outputDir)
 
-	### Format the gaze data
-	print('formatting gaze data...')
-	gazeData_world, frame_timestamps = formatGazeData(inputDir)
+    ### Format the gaze data
+    print('formatting gaze data...')
+    gazeData_world, frame_timestamps = formatGazeData(inputDir)
 
-	# write the gazeData to to a csv file
-	print('writing file to csv...')
-	csv_file = join(outputDir, 'gazeData_world.tsv')
-	export_range = slice(0, len(gazeData_world))
-	with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
-		csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
-		csv_writer.writerow(['{}\t{}\t{}\t{}\t{}'.format("timestamp",
-							"frame_idx",
-							"confidence",
-							"norm_pos_x",
-							"norm_pos_y")])
-		for g in list(chain(*gazeData_world[export_range])):
-			data = ['{:.3f}\t{:d}\t{:.1f}\t{:.3f}\t{:.3f}'.format(g["timestamp"]*1000,
-								g["frame_idx"],
-								g["confidence"],
-								g["norm_pos"][0],
-								1-g["norm_pos"][1])]  # translate y coord to origin in top-left
-			csv_writer.writerow(data)
+    # write the gazeData to to a csv file
+    print('writing file to csv...')
+    csv_file = join(outputDir, 'gazeData_world.tsv')
+    export_range = slice(0, len(gazeData_world))
+    with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
+        csv_writer.writerow(['{}\t{}\t{}\t{}\t{}'.format("timestamp",
+                                                         "frame_idx",
+                                                         "confidence",
+                                                         "norm_pos_x",
+                                                         "norm_pos_y")])
+        for g in list(chain(*gazeData_world[export_range])):
+            data = ['{:.3f}\t{:d}\t{:.1f}\t{:.3f}\t{:.3f}'.format(g["gaze_timestamp"] * 1000,
+                                                                  g["world_idx"],
+                                                                  g["confidence"],
+                                                                  g["norm_pos_x"],
+                                                                  1 - g["norm_pos_y"])]  # translate y coord to origin in top-left
+            csv_writer.writerow(data)
 
-	# write the frametimestamps to a csv file
-	frameNum = np.arange(1, frame_timestamps.shape[0]+1)
-	frame_ts_df = pd.DataFrame({'frameNum': frameNum, 'timestamp':frame_timestamps})
-	frame_ts_df.to_csv(join(outputDir, 'frame_timestamps.tsv'), sep='\t', float_format='%.3f', index=False)
+    # write the frametimestamps to a csv file
+    frameNum = np.arange(1, frame_timestamps.shape[0] + 1)
+    frame_ts_df = pd.DataFrame({'frameNum': frameNum, 'timestamp': frame_timestamps})
+    frame_ts_df.to_csv(join(outputDir, 'frame_timestamps.tsv'), sep='\t', float_format='%.3f', index=False)
 
-	### Compress and Move the world camera movie to the output
-	print('copying world recording movie...')
-	if not 'worldCamera.mp4' in os.listdir(outputDir):
-		# compress
-		print('compressing world camera video')
-		cmd_str = ' '.join(['ffmpeg', '-i', join(inputDir, 'world.mp4'), '-pix_fmt', 'yuv420p', join(inputDir, 'worldCamera.mp4')])
-		print(cmd_str)
-		os.system(cmd_str)
+    ### Compress and Move the world camera movie to the output
+    print('copying world recording movie...')
+    if not 'worldCamera.mp4' in os.listdir(outputDir):
+        # compress
+        print('compressing world camera video')
+        cmd_str = ' '.join(
+            ['ffmpeg', '-i', join(inputDir, 'world.mp4'), '-pix_fmt', 'yuv420p', join(inputDir, 'worldCamera.mp4')])
+        print(cmd_str)
+        os.system(cmd_str)
 
-		# move the file to the output directory
-		shutil.move(join(inputDir, 'worldCamera.mp4'), join(outputDir, 'worldCamera.mp4'))
+        # move the file to the output directory
+        shutil.move(join(inputDir, 'worldCamera.mp4'), join(outputDir, 'worldCamera.mp4'))
 
 
 def formatGazeData(inputDir):
-	"""
+    """
 	- load the pupil_data and timestamps
 	- get the "gaze" fields from pupil data (i.e. the gaze lcoation w/r/t world camera)
 	- sync gaze data with the world_timestamps array
 	"""
 
-	# load pupil data
-	pupil_data_path = join(inputDir, 'pupil_data')
-	with open(pupil_data_path, 'rb') as fh:
-		try:
-			gc.disable()
-			pupil_data = msgpack.unpack(fh)
-		except Exception as e:
-			print(e)
-		finally:
-			gc.enable()
-	gaze_list = pupil_data['gaze_positions']   # gaze positon (world camera)
+    # load pupil data
+    info_file = join(inputDir, 'gaze_positions.csv')
+    # import .csv file as pandas dataframe
+    gaze_data_frame = remove_obsolete_columns(pd.read_csv(info_file))
 
-	# load timestamps
-	timestamps_path = join(inputDir, 'world_timestamps.npy')
-	frame_timestamps = np.load(timestamps_path)
+    # load timestamps
+    timestamps_path = join(inputDir, 'world_timestamps.npy')
+    frame_timestamps = np.load(timestamps_path)
 
-	# align gaze with world camera timestamps
-	gaze_by_frame = correlate_data(gaze_list, frame_timestamps)
+    # align gaze with world camera timestamps
+    gaze_by_frame = correlate_data(gaze_data_frame, frame_timestamps)
 
-	print(gaze_by_frame[1][1])
+    # make frame_timestamps relative to the first data timestamp
+    i = 0
+    while i < len(gaze_by_frame):
+        if len(gaze_by_frame[i]) != 0:
+            start_timeStamp = gaze_by_frame[i][1]['gaze_timestamp']
+            break
+        i += 1
+    frame_timestamps = (frame_timestamps - start_timeStamp) * 1000  # convert to ms
 
-	# make frame_timestamps relative to the first data timestamp
-	start_timeStamp = gaze_by_frame[1][1]['timestamp']
-	frame_timestamps = (frame_timestamps - start_timeStamp) * 1000 # convert to ms
-
-	return gaze_by_frame, frame_timestamps
+    return gaze_by_frame, frame_timestamps
 
 
-def correlate_data(data,timestamps):
-	'''
+def remove_obsolete_columns(data_frame):
+    del data_frame['base_data']
+    del data_frame['gaze_point_3d_x']
+    del data_frame['gaze_point_3d_y']
+    del data_frame['gaze_point_3d_z']
+    del data_frame['eye_center0_3d_x']
+    del data_frame['eye_center0_3d_y']
+    del data_frame['eye_center0_3d_z']
+    del data_frame['gaze_normal0_x']
+    del data_frame['gaze_normal0_y']
+    del data_frame['gaze_normal0_z']
+    del data_frame['eye_center1_3d_x']
+    del data_frame['eye_center1_3d_y']
+    del data_frame['eye_center1_3d_z']
+    del data_frame['gaze_normal1_x']
+    del data_frame['gaze_normal1_y']
+    del data_frame['gaze_normal1_z']
+
+    return data_frame
+
+
+def correlate_data(data, timestamps):
+    '''
 	data:  list of data :
 		each datum is a dict with at least:
 			timestamp: float
@@ -135,48 +156,50 @@ def correlate_data(data,timestamps):
 	Each slot contains a list that will have 0, 1 or more assosiated data points.
 	Finally we add an index field to the datum with the associated index
 	'''
-	timestamps = list(timestamps)
-	data_by_frame = [[] for i in timestamps]
+    timestamps = list(timestamps)
+    data_by_frame = [[] for i in timestamps]
 
-	frame_idx = 0
-	data_index = 0
+    frame_idx = 0
+    data_index = 0
 
-	data.sort(key=lambda d: d['timestamp'])
+    data.sort_values(by=['gaze_timestamp'])
 
-	while True:
-		try:
-			datum = data[data_index]
-			# we can take the midpoint between two frames in time: More appropriate for SW timestamps
-			ts = ( timestamps[frame_idx]+timestamps[frame_idx+1] ) / 2.
-			# or the time of the next frame: More appropriate for Sart Of Exposure Timestamps (HW timestamps).
-			# ts = timestamps[frame_idx+1]
-		except IndexError:
-			# we might loose a data point at the end but we dont care
-			break
+    while True:
+        try:
+            # get each row of data and convert from DataFrame to Dict
+            datum = data.iloc[data_index].to_dict()
 
-		if datum['timestamp'] <= ts:
-			datum['frame_idx'] = frame_idx
-			data_by_frame[frame_idx].append(datum)
-			data_index +=1
-		else:
-			frame_idx+=1
+            # we can take the midpoint between two frames in time: More appropriate for SW timestamps
+            ts = (timestamps[frame_idx] + timestamps[frame_idx + 1]) / 2.
+        	# or the time of the next frame: More appropriate for Sart Of Exposure Timestamps (HW timestamps).
+        	# ts = timestamps[frame_idx+1]
+        except IndexError:
+            # we might loose a data point at the end but we dont care
+            break
 
-	return data_by_frame
+        if datum['gaze_timestamp'] <= ts:
+            datum['world_idx'] = frame_idx
+            data_by_frame[frame_idx].append(datum)
+            data_index += 1
+        else:
+            frame_idx += 1
 
+    return data_by_frame
 
 
 if __name__ == '__main__':
-	# parse arguments
-	parser = argparse.ArgumentParser()
-	parser.add_argument('inputDir', help='path to the raw pupil labs recording dir')
-	parser.add_argument('outputDir', help='output directory root. Raw data will be written to recording specific dirs within this directory')
-	args = parser.parse_args()
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('inputDir', help='path to the raw pupil labs recording dir')
+    parser.add_argument('outputDir',
+                        help='output directory root. Raw data will be written to recording specific dirs within this directory')
+    args = parser.parse_args()
 
-	# check if input directory is valid
-	if not os.path.isdir(args.inputDir):
-		print('Invalid input dir: {}'.format(args.inputDir))
-		sys.exit()
-	else:
+    # check if input directory is valid
+    if not os.path.isdir(args.inputDir):
+        print('Invalid input dir: {}'.format(args.inputDir))
+        sys.exit()
+    else:
 
-		# run preprocessing on this data
-		preprocessData(args.inputDir, args.outputDir)
+        # run preprocessing on this data
+        preprocessData(args.inputDir, args.outputDir)

@@ -70,13 +70,15 @@ def preprocessData(inputDir, output_root):
 	export_range = slice(0, len(gazeData_world))
 	with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
 		csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
-		csv_writer.writerow(['{}\t{}\t{}\t{}'.format("timestamp",
+		csv_writer.writerow(['{}\t{}\t{}\t{}\t{}'.format("timestamp",
 							"frame_idx",
+							"confidence",
 							"norm_pos_x",
 							"norm_pos_y")])
 		for g in list(chain(*gazeData_world[export_range])):
-			data = ['{:.3f}\t{:d}\t{:.3f}\t{:.3f}'.format(g["Timestamp"]*1000,
+			data = ['{:.3f}\t{:d}\t{:.1f}\t{:.3f}\t{:.3f}'.format(g["Timestamp"]*1000,
 								g["Frame_Index"],
+								1.0,
 								g["Image_X"],
 								1-g["Image_Y"])]  # translate y coord to origin in top-left
 			csv_writer.writerow(data)
@@ -161,6 +163,7 @@ def correlate_data(gaze_data_frame, timestamps):
 		try:
 			# get each row of data and convert from DataFrame to Dict
 			datum = gaze_data_frame.iloc[data_index].to_dict()
+			print(datum)
 
 			# we can take the midpoint between two frames in time: More appropriate for SW timestamps
 			ts = (timestamps[frame_idx] + timestamps[frame_idx + 1]) / 2.
