@@ -13,14 +13,15 @@ Wearable eye-trackers introduce the challenge of translating recorded gaze locat
 
 This pipeline currently supports the following wearable eye-trackers:
 
-* Pupil Labs
+* Pupil Labs Core
+* Pupil Labs Invisible
 * Tobii Pro Glasses 2
-* SMI ETG 2
+* AdHawk MindLink
 
 *For more information look in:* **gazeMappingPipeline/gazeMappingGuide.md**
 
 ## Accuracy/Precision Comparisons
-We benchmarked accuracy and precision performance across 3 models of wearable eye-tracker (Pupil Labs 120 Hz Binocular, Tobii Pro Glasses 2, SMI ETG 2)
+We benchmarked accuracy and precision performance across 4 models of wearable eye-tracker (Pupil Labs Core, Pupil Labs Invisible, Tobii Pro Glasses 2, AdHawk MindLink)
 
 
 
