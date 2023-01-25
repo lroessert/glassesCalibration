@@ -61,7 +61,7 @@ def presentTask(subj, glasses, distance, offset):
 
 		pygame.display.flip()
 
-	s = input('Press Enter to start calibration')
+	#s = input('Press Enter to start calibration')
 
 	# Loop through each coordinate pairing
 	for p in pairings:
