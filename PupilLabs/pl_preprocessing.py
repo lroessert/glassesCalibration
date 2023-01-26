@@ -31,11 +31,11 @@ def preprocessData(inputDir, output_root):
 	Run all preprocessing steps for pupil lab data
 	"""
 
-    # Get the time, date and resolution from the info.csv file
+    # Get the time and date from the info.csv file
     info_file = join(inputDir, 'export_info.csv')
     date_dir, time_dir = save_info_from_csv(info_file)
 
-    # create the output directory (if necessary)
+    # Create the output directory (if necessary)
     outputDir = create_output_directory(output_root, date_dir, time_dir)
 
     # Format the gaze data
@@ -67,7 +67,6 @@ def export_csv(csv_file, gazeData_world, frame_timestamps, outputDir):
     """
     Read date_dir, time_dir, worldCamRes_y which are stored in .csv file and return them.
     """
-
     export_range = slice(0, len(gazeData_world))
     with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
         csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
@@ -113,11 +112,10 @@ def create_output_directory(output_root, date_dir, time_dir):
 
 def formatGazeData(inputDir):
     """
-	- load the pupil_data and timestamps
-	- get the "gaze" fields from pupil data (i.e. the gaze lcoation w/r/t world camera)
-	- sync gaze data with the world_timestamps array
-	"""
-
+    - load the pupil_data and timestamps
+    - get the "gaze" fields from pupil data (i.e. the gaze lcoation w/r/t world camera)
+    - sync gaze data with the world_timestamps array
+    """
     # load pupil data
     info_file = join(inputDir, 'gaze_positions.csv')
     gaze_data_frame = load_pupil_data_from_csv(info_file)

@@ -31,17 +31,19 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 ### Configuration vars
-startImage_path = '../task/startImage.jpg'
+startImage_path = './task/startImage.jpg'
 trialDur = 3000
 trialWin = (500, 2500)
 calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
+
+data_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Processing'
 
 # dict to store the pixels/deg visual angle on the calibration grid at various distances
 # The calibration grid is 1000px on edge, and 204mm on edge in the real world
 pixPerDeg = {'1M': 85.8, '2M': 171.2, '3M': 256.7}
 
 # dict to store the fps of gaze data based on different glasses models
-gaze_fps = {'Tobii': 50, 'PupilLabs': 120, 'SMI': 60}
+gaze_fps = {'Tobii': 50, 'PupilCore': 120, 'PupilInvisible': 120, 'AdHawk': 500}
 
 def processCalibration(condition):
 	"""
@@ -55,7 +57,7 @@ def processCalibration(condition):
 	idealMaxGazePts = int((trialWin[1]-trialWin[0])/1000 * gaze_fps[glasses])
 
 	### set up inputs/outputs
-	dataDir = join('../data', condition)
+	dataDir = join(data_path, condition)
 	procDir = join(dataDir, 'processed')
 	calibDir = join(dataDir, 'calibration')
 
@@ -64,7 +66,7 @@ def processCalibration(condition):
 		os.makedirs(calibDir)
 
 	# copy the task log for this condition to the calibration dir
-	taskLog_fname = join('../data', 'taskLogs', (condition + '_taskLog.txt'))
+	taskLog_fname = join(data_path, 'taskLogs', (condition + '_taskLog.txt'))
 	if os.path.exists(taskLog_fname):
 		shutil.copy(taskLog_fname, calibDir)
 	else:
@@ -272,13 +274,13 @@ def findStartFrame(vidPath):
 	"""
 	find the first frame in the video in which the startImage appears
 	"""
-	OPENCV3 = (cv2.__version__.split('.')[0] == '3')
+	OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 
 	# open vid file, set parameters
 	vid = cv2.VideoCapture(vidPath)
-	if OPENCV3:
+	if OPENCV4:
 		totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
-		featureDetect = cv2.xfeatures2d.SIFT_create()
+		featureDetect = cv2.SIFT_create()
 	else:
 		totalFrames = vid.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
 		featureDetect = cv2.SIFT()
@@ -343,7 +345,7 @@ def plotCalibrationGaze(gazeCalibration_df, condition, outputDir):
 	ax.axis("off")
 	ax.imshow(gridImg, cmap='Greys_r', alpha=0.3)		# background img
 	ax.scatter(gazeCalibration_df.calibGrid_gazeX, gazeCalibration_df.calibGrid_gazeY,
-				s=60, alpha=0.74, edgecolor='k', c=gazeCalibration_df.ptIdx, cmap='Vega20b')
+				s=60, alpha=0.74, edgecolor='k', c=gazeCalibration_df.ptIdx, cmap='tab20b')
 
 	# set axis limits
 	ax.set_ylim(-250, 1250)
@@ -359,7 +361,7 @@ def plotCalibrationGaze(gazeCalibration_df, condition, outputDir):
 	# plot gaze pts relative to center
 	ax2.scatter(np.deg2rad(gazeCalibration_df['angle'].astype(float)),
 							gazeCalibration_df['distance'].astype(float),
-							s=150, edgecolor='black', c=gazeCalibration_df.ptIdx, cmap='Vega20b', alpha=.74)
+							s=150, edgecolor='black', c=gazeCalibration_df.ptIdx, cmap='tab20b', alpha=.74)
 
 	# put circle at center for reference
 	ax2.scatter(0,0, s=2000, facecolor='black', alpha=0.4)
@@ -389,17 +391,18 @@ def plotCalibrationSummary(calibSummary_df, condition, outputDir):
 	ax.imshow(gridImg, cmap='Greys_r', alpha=0.3)
 
 	# centroid location
-	ax.scatter(calibSummary_df.centX, calibSummary_df.centY, s=60, c=calibSummary_df.ptIdx, cmap='Vega20b')
+	ax.scatter(calibSummary_df.centX, calibSummary_df.centY, s=60, c=calibSummary_df.ptIdx, cmap='tab20b')
 
 	# rms as circle enclosing centroid location
 	ax.scatter(calibSummary_df.centX, calibSummary_df.centY,
 				s=1000*calibSummary_df.RMS,
 				c=calibSummary_df.ptIdx,
 				edgecolor='none',
-				cmap='Vega20b', alpha=0.5)
+				cmap='tab20b', alpha=0.5)
 
 	# draw connecting lines
-	cmap = plt.cm.get_cmap('Vega20b')
+	"""
+	cmap = plt.cm.get_cmap('tab20b')
 	for p in sorted(calibSummary_df.ptIdx):
 		thisPt = calibSummary_df[calibSummary_df.ptIdx == p]
 
@@ -414,7 +417,7 @@ def plotCalibrationSummary(calibSummary_df, condition, outputDir):
 		xs = [thisPt.centX, idealLocation[0]]
 		ys = [thisPt.centY, idealLocation[1]]
 		ax.plot(xs, ys, color=thisColor, lw=1)
-
+	"""
 	ax.set_ylim(-250,1250)
 	ax.set_xlim(-250,1250)
 	ax.invert_yaxis()
@@ -429,7 +432,7 @@ def plotCalibrationSummary(calibSummary_df, condition, outputDir):
 							s=150,
 							edgecolor='black',
 							c=calibSummary_df['ptIdx'],
-							cmap='Vega20b',
+							cmap='tab20b',
 							alpha=.74)
 	# rms
 	ax2.scatter(np.deg2rad(calibSummary_df['centAngle'].astype(float)),
@@ -437,7 +440,7 @@ def plotCalibrationSummary(calibSummary_df, condition, outputDir):
 							s=1500*calibSummary_df.RMS,
 							edgecolor='none',
 							c=calibSummary_df['ptIdx'],
-							cmap='Vega20b',
+							cmap='tab20b',
 							alpha=.5)
 	ax2.scatter(0,0, s=2000, facecolor='black', alpha=.4)  # put circle at center for reference
 	ax2.spines['polar'].set_visible(False)
@@ -455,7 +458,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	# check if valid condition
-	if not os.path.isdir(join('../data', args.condition, 'processed')):
+	if not os.path.isdir(join(data_path, args.condition, 'processed')):
 		print('Cannot find a "Processed" directory in ./data/{}'.format(args.condition))
 	else:
 		processCalibration(args.condition)

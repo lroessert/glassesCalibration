@@ -40,6 +40,8 @@ import cv2
 border_path = '../referenceGrids/enhancedGrid.jpg'
 calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
 
+output_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Processing'
+
 OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 print("OPENCV version " + cv2.__version__)
 
@@ -48,7 +50,7 @@ def copyPreprocessing(preprocessedDir, condition):
 	"""
 	copy the data from the preprocessing dir to a new dir based on condition name
 	"""
-	outputDir = join('../data', condition)
+	outputDir = join(output_path, condition)
 
 	# create dir
 	if not os.path.isdir(outputDir):
@@ -141,7 +143,7 @@ def processRecording(preprocessedDir, condition):
 	"""
 
 	### SetUp inputs/outputs
-	dataDir = join('../data', condition)
+	dataDir = join(output_path, condition)
 
 	# create dir to store output of processing
 	procDir = join(dataDir, 'processed')
