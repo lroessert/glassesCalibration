@@ -14,6 +14,7 @@ import time
 import pygame
 import itertools
 from random import shuffle
+from pygame.locals import *
 
 
 def presentTask(subj, glasses, distance, offset):
@@ -25,26 +26,27 @@ def presentTask(subj, glasses, distance, offset):
 	cols = rows = ['one', 'three', 'five']			# define col, row locations
 	numDict = {'one':1, 'two':2, 'three':3, 'four':4, 'five':5}
 
-	# create randomized row, col pairings
+	# Create randomized row, col pairings
 	pairings = []
 	for p in itertools.product(cols, rows):
 		pairings.append(p)
 	shuffle(pairings)
 
-	# start log file
+	# Start log file
 	output_fname = '_'.join([subj, glasses, distance, offset, 'taskLog']) + '.txt'
 	f = open(output_fname, 'w')
 	f.write('\t'.join(['col', 'row', 'time']) + '\n')
 
-	# initialize pygame window
+	# Initialize pygame window
 	pygame.init()
 	red = 255, 0, 0
 	green = 0, 255, 0
-	size = 650, 650
-	screen = pygame.display.set_mode(size)
+	size = 1920, 1080
+	screen = pygame.display.set_mode(size, pygame.SCALED)
+	pygame.display.set_caption('Calibration Task')
 
 	# Load the start image
-	startImg = pygame.image.load("/Users/leonardrossert/Documents/GitHub/glassesCalibration/task/startImage.jpg")
+	startImg = pygame.image.load("./task/startImage2.jpg")
 
 	# Show start screen (red screen for 3 sec, then Luuka)
 	keepGoing = True
@@ -52,11 +54,11 @@ def presentTask(subj, glasses, distance, offset):
 	count = 3
 	while keepGoing:
 		curTime = time.time()
-		if curTime-displayStart < 3:
+		if curTime-displayStart < 10: # Show red background for 10 seconds
 			screen.fill(red)
 		else:
 			screen.blit(startImg, (0,0))
-			trialStart = time.time();			# record start time of Luuka appearing
+			trialStart = time.time();			# Record start time of Luuka appearing
 			keepGoing = False
 
 		pygame.display.flip()

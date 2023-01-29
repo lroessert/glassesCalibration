@@ -4,7 +4,7 @@ import pandas as pd
 
 
 # conditions
-sessions = [0,1,2,3,4,5,6,7,8,9,10]
+sessions = [1,2,3,4,5,6,7,8,9]
 raw_dir = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Raw_Data/AdHawk'
 output_dir = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Preprocessing/AdHawk'
 

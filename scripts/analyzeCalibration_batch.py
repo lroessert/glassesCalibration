@@ -7,8 +7,8 @@ from os.path import join
 import pandas as pd
 
 conditions = []
-for subj in ['101', '102', '103']:
-	for glasses in ['PupilLabs', 'SMI', 'Tobii']:
+for subj in ['001']:
+	for glasses in ['AdHawk']:
 		for dist in ['1M', '2M', '3M']:
 			for offset in ['0deg', '10Ldeg', '10Rdeg']:
 				thisCond = '_'.join([subj, glasses, dist, offset])
@@ -25,7 +25,8 @@ for cond in conditions:
 	print('Submitting job for: {}'.format(cond))
 
 	try:
-		cmd_str = 'python analyzeCalibration.py ' + cond
+		cmd_str = 'python3 analyzeCalibration.py ' + cond
+		print(cmd_str)
 		os.system(cmd_str)
 	except:
 		print('FAILED TO RUN:  {}'.format(cond))

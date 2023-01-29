@@ -31,19 +31,19 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 ### Configuration vars
-startImage_path = './task/startImage.jpg'
+startImage_path = '../task/startImage.jpg'
 trialDur = 3000
 trialWin = (500, 2500)
 calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
 
-data_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Processing'
+data_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Processing/'
 
 # dict to store the pixels/deg visual angle on the calibration grid at various distances
 # The calibration grid is 1000px on edge, and 204mm on edge in the real world
 pixPerDeg = {'1M': 85.8, '2M': 171.2, '3M': 256.7}
 
 # dict to store the fps of gaze data based on different glasses models
-gaze_fps = {'Tobii': 50, 'PupilCore': 120, 'PupilInvisible': 120, 'AdHawk': 500}
+gaze_fps = {'Tobii': 50, 'PupilCore': 120, 'PupilInvisible': 120, 'AdHawk': 125}
 
 def processCalibration(condition):
 	"""
