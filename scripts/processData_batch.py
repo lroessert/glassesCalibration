@@ -6,9 +6,9 @@ import os
 from os.path import join
 import pandas as pd
 
-metadataTable_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Preprocessing/AdHawk'
+metadataTable_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-30/Results/Preprocessing/PupilLabs_Invisible'
 
-conditions = ['001_AdHawk_1M_10Rdeg']
+conditions = ['001_PupilInvisible_1M_0deg', '001_PupilInvisible_3M_0deg']
 
 # Load the metadata.csv table to get date and time in relation to condition
 metadata_df = pd.read_csv(join(metadataTable_path, 'metadataTable.csv'), sep = ';')

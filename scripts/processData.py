@@ -40,7 +40,7 @@ import cv2
 border_path = '../referenceGrids/enhancedGrid.jpg'
 calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
 
-output_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-25/Results/Processing'
+output_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-30/Results/Preprocessing/PupilLabs_Invisible'
 
 OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 print("OPENCV version " + cv2.__version__)
