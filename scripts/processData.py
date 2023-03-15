@@ -40,7 +40,7 @@ import cv2
 border_path = '../referenceGrids/enhancedGrid.jpg'
 calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
 
-output_path = '/Users/leonardrossert/Documents/Eye_tracking_test/Pilot-Study_23-01-30/Results/Preprocessing/PupilLabs_Invisible'
+output_path = '/Users/leonardrossert/Documents/User_Study/Recordings/007/Results'
 
 OPENCV4 = (cv2.__version__.split('.')[0] == '4')
 print("OPENCV version " + cv2.__version__)
@@ -202,8 +202,8 @@ def processRecording(preprocessedDir, condition):
 	# find keypoints, descriptors for each image
 	borderImg_kp, borderImg_des = featureDetect.detectAndCompute(borderImg, None)
 	calibImg_kp, calibImg_des = featureDetect.detectAndCompute(calibImg, None)
-	print('Background Image: found {} keypoints'.format(len(borderImg_kp)))
-	print('Calibration Grid: found {} keypoints'.format(len(calibImg_kp)))
+	print('[{}] Background Image: found {} keypoints'.format(condition, len(borderImg_kp)))
+	print('[{}] Calibration Grid: found {} keypoints'.format(condition, len(calibImg_kp)))
 
 	# find matching points, and filter to find best ones
 	calibImg_pts, borderImg_pts = findMatches(calibImg_kp, calibImg_des, borderImg_kp, borderImg_des)
@@ -241,7 +241,7 @@ def processRecording(preprocessedDir, condition):
 			calibGrid_frame = calibImgColor.copy()
 
 			# process this frame
-			processedFrame = processFrame(frame, frameCounter, borderImg_kp, borderImg_des, featureDetect)
+			processedFrame = processFrame(frame, frameCounter, borderImg_kp, borderImg_des, featureDetect, condition)
 
 			# if good match between border and this frame
 			if processedFrame['foundGoodMatch']:
@@ -294,9 +294,13 @@ def processRecording(preprocessedDir, condition):
 					if ((int(border_gazeY) > 1200) | (int(border_gazeY) < 0)):
 						logFile.write('border y exceeds height: {} on frame {} \n'.format(border_gazeY, frameNum))
 
-					cv2.circle(frame, (int(world_gazeX), int(world_gazeY)), dotSize, dotColor, -1)						# world frame
-					cv2.circle(border_frame, (int(border_gazeX), int(border_gazeY)),  dotSize, dotColor, -1)				# border frame
-					cv2.circle(calibGrid_frame, (int(calibGrid_gazeX), int(calibGrid_gazeY)),  dotSize, dotColor, -1)	# calibGrid frame
+
+					try:
+						cv2.circle(frame, (int(world_gazeX), int(world_gazeY)), dotSize, dotColor, -1)						# world frame
+						cv2.circle(border_frame, (int(border_gazeX), int(border_gazeY)),  dotSize, dotColor, -1)				# border frame
+						cv2.circle(calibGrid_frame, (int(calibGrid_gazeX), int(calibGrid_gazeY)),  dotSize, dotColor, -1)	# calibGrid frame
+					except ValueError as e:
+						print(e)
 			else:
 				# if not a good match, just use the original frame for the border2world
 				border2world_frame = processedFrame['origFrame']
@@ -322,9 +326,10 @@ def processRecording(preprocessedDir, condition):
 				colOrder = ['worldFrame', 'gaze_ts', 'confidence',
 							'world_gazeX', 'world_gazeY', 'border_gazeX', 'border_gazeY', 'calibGrid_gazeX', 'calibGrid_gazeY']
 				gazeMapped_df[colOrder].to_csv(join(procDir, 'gazeData_mapped.tsv'), sep='\t', index=False, float_format='%.3f')
+				print('[{}] Writing gazeData_mapped.tsv... '.format(condition))
 			except Exception as e:
 				print(e)
-				print('cound not write gazeData_mapped to csv')
+				print('[{}] Could not write gazeData_mapped to csv.'.format(condition))
 				pass
 
 			# close the logFile
@@ -332,12 +337,12 @@ def processRecording(preprocessedDir, condition):
 
 	endTime = time.time()
 	frameProcessing_time = endTime - frameProcessing_startTime
-	print('Total time: %s seconds' % frameProcessing_time)
-	print('Avg time/frame: %s seconds' % (frameProcessing_time/framesToUse.shape[0]) )
+	print('[{}] Finished with total time: %s seconds'.format(condition) % frameProcessing_time)
+	print('Avg time/frame: %s seconds' % (frameProcessing_time/framesToUse.shape[0]))
 
 
 
-def processFrame(frame, frameNumber, border_kp, border_des, featureDetect):
+def processFrame(frame, frameNumber, border_kp, border_des, featureDetect, condition):
 	"""
 	Process a single frame from the world camera
 		- try to find match between frame and border image
@@ -356,7 +361,7 @@ def processFrame(frame, frameNumber, border_kp, border_des, featureDetect):
 	# try to match the frame and the border image
 	try:
 		frame_kp, frame_des = featureDetect.detectAndCompute(frame_gray, None)
-		print('found {} features on frame {}'.format(len(frame_kp), frameNumber))
+		print('[{}] found {} features on frame {}'.format(condition, len(frame_kp), frameNumber))
 
 		if len(frame_kp) < 2:
 			border_matchPts = None
@@ -369,14 +374,14 @@ def processFrame(frame, frameNumber, border_kp, border_des, featureDetect):
 
 			# if sufficient number of matches....
 			if numMatches > 10:
-				print('found {} matches on frame {}'.format(numMatches, frameNumber))
+				print('[{}] found {} matches on frame {}'.format(condition, numMatches, frameNumber))
 				sufficientMatches = True
 			else:
-				print('Insufficient matches ({}} matches) on frame {}'.format(numMatches, frameNumber))
+				print('[{}] Insufficient matches ({}} matches) on frame {}'.format(condition, numMatches, frameNumber))
 				sufficientMatches = False
 
 		except:
-			print ('no matches found on frame {}'.format(frameNumber))
+			print ('[{}] no matches found on frame {}'.format(condition, frameNumber))
 			sufficientMatches = False
 			pass
 

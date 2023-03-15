@@ -119,11 +119,9 @@ def formatGazeData(inputDir):
 
 	# align gaze with world camera timestamps
 	gaze_by_frame = correlate_data(gaze_data_frame, frame_timestamps)
-	print(frame_timestamps[0])
 
 	# make frame_timestamps relative to the first data timestamp
 	frame_timestamps = set_start_timeStamp(gaze_by_frame, frame_timestamps)
-	print(frame_timestamps[0])
 
 	return gaze_by_frame, frame_timestamps
 
@@ -209,66 +207,87 @@ def generate_timestamp_list(data, empty_value):
 			# No timestamp exists for that frame
 			frame_timestamps[i] = empty_value
 
-	# Convert list to numpy array and fill empty_values
-	frame_timestamps = fill_empty_timestamps(np.array(frame_timestamps), empty_value)
+	# Convert list to numpy array
+	frame_timestamps = np.array(frame_timestamps)
+
+	# Fill empty_values if there are empty timeframes
+	if len(np.where(frame_timestamps == empty_value)[0]) > 0:
+		frame_timestamps = fill_timestamps(frame_timestamps, empty_value)
 
 	return frame_timestamps
 
-def fill_empty_timestamps(timestamps, empty_value):
+def fill_timestamps(timestamps, empty_value):
 	"""
 	Fills empty frames with calculated average frame time.
 	"""
-	# Set value of minimum number of frames from which the average frame time should be calculated
-	min_frame_range = 100
 
-	timestamps_empty_range = []
-
-	# Try to find
-	while len(timestamps_empty_range) == 0:
-		# Find timestamps_empty_range
-		if min_frame_range >= 2:
-			try:
-				timestamps_empty_range = find_empty_timestamps(timestamps, empty_value, min_frame_range)
-			except Warning as w:
-				print(w)
-		# No timestamps_empty_range was found
-		else:
-			print('Not enough timestamps to fill in missing timestamps')
-			break
-
-		# Trying again by reducing min_frame_range
-		min_frame_range -= 2
-
-	# Calculate average frametime
-	average_frametime = calculate_average_frametime(timestamps_empty_range, timestamps)
+	# Get the average frametime of all frames inbetween empty frames
+	average_frametime = get_average_frametime(timestamps, empty_value, 30)
 
 	# Fill empty frames using the average frametime
-	fill_timestamps(timestamps, average_frametime, empty_value)
+	fill_empty_timestamps(timestamps, average_frametime, empty_value)
 
 	return timestamps
-def find_empty_timestamps(timestamps, empty_value, min_frame_range):
+
+def get_average_frametime(timestamps, empty_value, min_frame_range):
+	"""
+	Computes the average frametime if the frames inbetween empty frames.
+	To not include the larger gaps empty frames cause.
+	min_frame_range sets the minimum range of frames required to calculate average frametime.
+	"""
+
+	# Range of timestamps between empty frames
+	timestamps_empty_range = []
+
+	# Default average frame time for 30 fps video files
+	average_frametime = 1/30
+
+	try:
+		# Try to find range between empty timestamps
+		timestamps_empty_range = timestamps_inbetween_empty_range(timestamps, empty_value, min_frame_range)
+		# Calculate average frametime from ranges
+		average_frametime = calculate_average_frametime(timestamps_empty_range, timestamps)
+	except Warning as w:
+		print(w)
+
+	return average_frametime
+
+def timestamps_inbetween_empty_range(timestamps, empty_value, min_frame_range):
 	"""
 	Searches the indices with empty timestamps. Searches for range inbetween empty timestamps that is greater
 	than min_range. Returns timestamps_not_empty_range which is a range within timestamps without empty timestamps.
 	"""
-	# Get all indices of empty timestamps
-	empty_timestamps_idx = np.where(timestamps == empty_value)[0]
 
-	# Create list for ranges without empty timestamps
-	timestamps_not_empty_range = []
+	# Find all indices of empty timestamps and store them in a list
+	empty_timestamps_idx_list = np.where(timestamps == empty_value)[0]
 
-	i = 0
-	# Search for ranges inbetween empty frame timestamps
-	while i < (len(empty_timestamps_idx) - 1):
-		if empty_timestamps_idx[i + 1] - empty_timestamps_idx[i] > min_frame_range:
-			timestamps_not_empty_range.append([empty_timestamps_idx[i], empty_timestamps_idx[i + 1]])
-		i += 1
+	# Create list for tuples of ranges without empty timestamps
+	timestamps_between_empty_range = []
 
-	# Raise warning if no range was found
-	if len(timestamps_not_empty_range) == 0:
-		raise Warning('Not enough timestamps to fill in missing timestamps. Trying again...')
+	if(len(empty_timestamps_idx_list) > 1):
+		# More than one timestamp is empty
+		i = 0
+		# Search for ranges inbetween empty frame timestamps and store them as tuples in list
+		while i < (len(empty_timestamps_idx_list) - 1):
+			if empty_timestamps_idx_list[i + 1] - empty_timestamps_idx_list[i] > min_frame_range:
+				timestamps_between_empty_range.append([empty_timestamps_idx_list[i], empty_timestamps_idx_list[i + 1]])
+			i += 1
 
-	return timestamps_not_empty_range
+		# Raise warning if no range was found
+		if len(timestamps_between_empty_range) == 0:
+			raise Warning('Not enough timestamps to fill in missing timestamps.')
+
+	else:
+		# Only one empty timestamp
+		# Search for ranges before or after empty frame timestamps
+		if (len(timestamps) - 1) - empty_timestamps_idx_list[0] > min_frame_range:
+			# Append range between empty timestamp and last timestamp
+			timestamps_between_empty_range.append([empty_timestamps_idx_list[0], len(timestamps) - 1])
+		if (0 + empty_timestamps_idx_list[0] > min_frame_range):
+			# Append range between fist timestamp and empty timestamp
+			timestamps_between_empty_range.append([0, empty_timestamps_idx_list[0]])
+
+	return timestamps_between_empty_range
 
 def calculate_average_frametime(timestamps_empty_range, timestamps):
 	"""
@@ -287,11 +306,11 @@ def calculate_average_frametime(timestamps_empty_range, timestamps):
 
 	return average_frametime
 
-def fill_timestamps(timestamps, average_frametime, empty_value):
+def fill_empty_timestamps(timestamps, average_frametime, empty_value):
 	"""
 	Fills list in reverse from start-value. Subtracts difference from previous value.
 	"""
-	for i in range(len(timestamps), 0, -1):
+	for i in range(len(timestamps) - 1, 1, -1):
 		if timestamps[i-1] == empty_value:
 			timestamps[i-1] = timestamps[i] - average_frametime
 

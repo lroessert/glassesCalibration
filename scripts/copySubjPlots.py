@@ -1,5 +1,6 @@
 """
-Move the individual subject plots (calibration raw and calibration summary) to a dedicated folder in the figs directory. This will make for easy sharing down the line
+Move the individual subject plots (calibration raw and calibration summary) to a dedicated folder in the figs directory.
+This will make for easy sharing down the line.
 """
 
 # python 2/3 compatibility
@@ -10,14 +11,14 @@ import sys, os
 import shutil
 from os.path import join
 
-data_dir = '../data'
-dest_dir = '../exposition/figs/conditionPlots'
+data_dir = '/Users/leonardrossert/Documents/User_Study/Recordings/011/Results'
+dest_dir = '/Users/leonardrossert/Documents/User_Study/Results/conditionPlots/111'
 if not os.path.isdir(dest_dir):
     os.makedirs(dest_dir)
 
 ## Loop through all subject data folders in the data dir
-for subj in ['101', '102', '103']:
-    for glasses in ['PupilLabs', 'SMI', 'Tobii']:
+for subj in ['111']:
+    for glasses in ['AdHawk']:
         for dist in ['1M', '2M', '3M']:
             for angle in ['0deg', '10Ldeg', '10Rdeg']:
 
@@ -28,10 +29,16 @@ for subj in ['101', '102', '103']:
 
                 # Raw Plot:
                 raw_src = join(cond_dir, 'calibration/calibrationPlot_raw.pdf')
-                shutil.copy(raw_src, join(dest_dir, (output_prefix + '_RAW.pdf')))
+                try:
+                    shutil.copy(raw_src, join(dest_dir, (output_prefix + '_RAW.pdf')))
+                except FileNotFoundError as e:
+                    print(e)
 
                 # Summary Plot:
                 summary_src = join(cond_dir, 'calibration/calibrationPlot_summary.pdf')
-                shutil.copy(summary_src, join(dest_dir, (output_prefix + '_SUMMARY.pdf')))
+                try:
+                    shutil.copy(summary_src, join(dest_dir, (output_prefix + '_SUMMARY.pdf')))
+                except FileNotFoundError as e:
+                    print(e)
 
                 print('copied ' + output_prefix)

@@ -6,23 +6,15 @@ import os
 import subprocess
 from os.path import join
 import pandas as pd
-from subprocess import Popen
+import math
 
-metadataTable_path = '/Users/leonardrossert/Documents/User_Study/2023-01-31/002/Results'
+metadataTable_path = '/Users/leonardrossert/Documents/User_Study/Recordings/007/Results'
 
-conditions = ['002_PupilInvisible_1M_0deg', '002_PupilInvisible_1M_10Ldeg', '002_PupilInvisible_1M_10Rdeg',
-			  '002_PupilInvisible_2M_0deg', '002_PupilInvisible_2M_10Ldeg', '002_PupilInvisible_2M_10Rdeg',
-			  '002_PupilInvisible_3M_0deg', '002_PupilInvisible_3M_10Ldeg', '002_PupilInvisible_3M_10Rdeg',
-			  '102_PupilInvisible_1M_0deg', '102_PupilInvisible_1M_10Ldeg', '102_PupilInvisible_1M_10Rdeg',
-			  '102_PupilInvisible_2M_0deg', '102_PupilInvisible_2M_10Ldeg', '102_PupilInvisible_2M_10Rdeg',
-			  '102_PupilInvisible_3M_0deg', '102_PupilInvisible_3M_10Ldeg', '102_PupilInvisible_3M_10Rdeg',
-			  '002_PupilInvisible_1M_1', '002_PupilInvisible_1M_2', '002_PupilInvisible_1M_3',
-			  '002_PupilInvisible_2M_1', '002_PupilInvisible_2M_2', '002_PupilInvisible_2M_3',
-			  '002_PupilInvisible_3M_1', '002_PupilInvisible_3M_2', '002_PupilInvisible_3M_3']
+conditions = ['007_Tobii_1M_10Ldeg']
 
-parallel_processes = 10
+parallel_processes = 9
 
-# Load the metadata.csv table to get date and time in relation to condition
+# Load the metadata.csv table to get date and time folder in relation to condition
 metadata_df = pd.read_csv(join(metadataTable_path, 'metadataTable.csv'), sep = ';')
 
 # List for all the commands for processData
@@ -30,18 +22,22 @@ commands = []
 
 # Fill commands with commands for each file
 for cond in conditions:
+	#print('Submitting job for: {}'.format(cond))
+	try:
+		# Search folder for condition with metadata_df
+		thisRow = metadata_df.loc[metadata_df.Condition == cond]
+		preprocDir = join(metadataTable_path, thisRow.Date.iloc[0], thisRow.Time.iloc[0])
 
-	print('Submitting job for: {}'.format(cond))
+		# Append python3 command to list
+		commands.append('python3 processData.py ' + preprocDir + ' ' + cond)
+	except IndexError as e:
+		print(e)
 
-	thisRow = metadata_df.loc[metadata_df.Condition == cond]
-	preprocDir = join(metadataTable_path, thisRow.Date.iloc[0], thisRow.Time.iloc[0])
 
-	commands.append('python3 processData.py ' + preprocDir + ' ' + cond)
-
-for j in range(max(int(len(commands) / parallel_processes), 1)):
+# Start parallel_processes amount of processes
+for j in range(max(math.ceil(len(commands) / parallel_processes), 1)):
 	try:
 		procs = [subprocess.Popen(i, shell=True) for i in commands[j * parallel_processes: min((j + 1) * parallel_processes, len(commands))]]
-
 		for p in procs:
 			p.wait()
 	except:

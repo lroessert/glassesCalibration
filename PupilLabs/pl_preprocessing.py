@@ -139,7 +139,7 @@ def set_start_timeStamp(gaze_by_frame, frame_timestamps):
     i = 0
     while i < len(gaze_by_frame):
         if len(gaze_by_frame[i]) != 0:
-            start_timeStamp = gaze_by_frame[i][1]['gaze_timestamp']
+            start_timeStamp = gaze_by_frame[i][0]['gaze_timestamp']
             break
         i += 1
     frame_timestamps = (frame_timestamps - start_timeStamp) * 1000  # convert to ms
