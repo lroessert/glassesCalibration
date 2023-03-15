@@ -17,7 +17,7 @@ ggsave <- function(...) {
   invisible()
 }
 
-calibData <- read_delim("/Users/leonardrossert/Documents/User_Study/Results/analysis/All/all_Outside_calibrationSummary.tsv", delim = "\t")
+calibData <- read_delim("../all_calibrationSummary.tsv", delim = "\t")
 kable(calibData[1:5,], caption = 'Calibration Data, all subjects')
 
 # group by unique conditions, and take the mean of all numeric columns
@@ -83,9 +83,9 @@ accPlot <- ggplot(aes(y = centDist, x = glasses, fill = glasses),
   geom_segment(aes(x = .4, y = 0, xend = 4.6, yend = 0), size = .25)
 
 
-  ## Precision
+## Precision
 rmsPlot <- ggplot(aes(y = RMS, x = glasses, fill = glasses),
-                    data = dat) +
+                  data = dat) +
   labs(
     x = "Eye-tracker",
     y = "Std. Dev. (deg)",
@@ -111,13 +111,13 @@ rmsPlot <- ggplot(aes(y = RMS, x = glasses, fill = glasses),
     legend.position = "none"
   ) +
   geom_segment(aes(x = .4, y = 0, xend = 4.6, yend = 0), size = .25) +
-  geom_signif(y_position=1.4, xmin=1, xmax=4, annotation=" ", tip_length=0.01, size=1)
+  geom_signif(y_position = 1.4, xmin = 1, xmax = 4, annotation = " ", tip_length = 0.01, size = 1)
 
 
 ## Combine plots
 ggarrange(accPlot, rmsPlot,
           labels = c("A", "B"),
           ncol = 2, nrow = 1) +
-  ggsave("/Users/leonardrossert/Documents/User_Study/Results/analysis/Figs/overallAccPrec_Outside.pdf", width = 8, height = 5) +
-  ggsave("/Users/leonardrossert/Documents/User_Study/Results/analysis/Figs/overallAccPrec_Outside.png", width = 8, height = 5)
+  ggsave("../Figs/overallAccPrec_Outside.pdf", width = 8, height = 5) +
+  ggsave("../Figs/overallAccPrec_Outside.png", width = 8, height = 5)
 

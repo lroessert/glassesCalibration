@@ -11,8 +11,8 @@ import sys, os
 import shutil
 from os.path import join
 
-data_dir = '/Users/leonardrossert/Documents/User_Study/Recordings/011/Results'
-dest_dir = '/Users/leonardrossert/Documents/User_Study/Results/conditionPlots/111'
+data_dir = '../Results'
+dest_dir = '../001'
 if not os.path.isdir(dest_dir):
     os.makedirs(dest_dir)
 

@@ -37,7 +37,7 @@ trialDur = 3000
 trialWin = (500, 2500)
 calibGrid_path = '../referenceGrids/calibrationGrid.jpg'
 
-data_path = '/Users/leonardrossert/Documents/User_Study/Recordings/Results'
+data_path = '../Results'
 
 # dict to store the pixels/deg visual angle on the calibration grid at various distances
 # The calibration grid is 1000px on edge, and 204mm on edge in the real world

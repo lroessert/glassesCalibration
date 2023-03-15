@@ -8,8 +8,8 @@ import os
 from os.path import join
 import pandas as pd
 
-data_dir = '/Users/leonardrossert/Documents/User_Study/Recordings/Results'
-analysis_dir = '/Users/leonardrossert/Documents/User_Study/Results/analysis/Glasses'
+data_dir = '../Results'
+analysis_dir = '../Glasses'
 
 allSubjsInside_df = pd.DataFrame()
 

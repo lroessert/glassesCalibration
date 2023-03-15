@@ -13,7 +13,7 @@ ggsave <- function(...) {
   invisible()
 }
 
-calibData <- read_delim("/Users/leonardrossert/Documents/User_Study/Results/analysis/All/all_calibrationSummary.tsv", delim = "\t")
+calibData <- read_delim("../all_calibrationSummary.tsv", delim = "\t")
 kable(calibData[1:5,], caption = 'Calibration Data, all subjects')
 
 # group by unique conditions, and take the mean of all numeric columns
@@ -123,6 +123,6 @@ rmsPlot <- ggplot(aes(y = RMS, x = environment, fill = environment),
 ggarrange(accPlot, rmsPlot,
           labels = c("A", "B"),
           ncol = 2, nrow = 1) +
-  ggsave("/Users/leonardrossert/Documents/User_Study/Results/analysis/Figs/overallAccPrec_Enviroment.pdf", width = 8, height = 5) +
-  ggsave("/Users/leonardrossert/Documents/User_Study/Results/analysis/Figs/overallAccPrec_Environment.png", width = 8, height = 5)
+  ggsave("../overallAccPrec_Enviroment.pdf", width = 8, height = 5) +
+  ggsave("../overallAccPrec_Environment.png", width = 8, height = 5)
 
